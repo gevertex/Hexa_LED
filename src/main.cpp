@@ -236,7 +236,7 @@ void setHexFlightCategory(const char* flight_category, uint8_t group_index, Anim
       group_manager.setGroupColor(group_index, FAA_LIFR, transition);
     }
   }else{
-    group_manager.setGroupColor(group_index, black, transition);
+    group_manager.setGroupColor(group_index, white, transition);
   }
 }
 
