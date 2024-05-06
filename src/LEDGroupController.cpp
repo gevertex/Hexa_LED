@@ -10,27 +10,35 @@ LEDGroupController::LEDGroupController(const char *name, const uint8_t *ledIndex
   : name(name), led_indexes(ledIndexes), num_leds(numLeds), strip(strip) {
 
   transition_complete = true;
-  transition_duration = 1000;
-  breathe_duration= 1000;
-  breathe_depth = 50;
+  transition_duration_ms = 2000;
+
+  //0-255 value
+  breathe_depth = 128;
 }
 
-void LEDGroupController::update() {
+uint8_t LEDGroupController::animationProgress(uint8_t scale, unsigned long curr_time_ms){
+  uint16_t elapsed_time = std::min((curr_time_ms - transition_start), (unsigned long)(transition_duration_ms));
+  return (uint16_t(scale) * elapsed_time) / transition_duration_ms;
+}
+
+void LEDGroupController::update(unsigned long curr_time_ms) {
 
   if(!transition_complete && strip.CanShow()){
 
+    //Set this here so time starts once update runs for the first time
+    //Helps avoid situations where blocked thread setting colors takes too long and misses entire animation
     if (transition_start == 0)
-      transition_start = millis();
+      transition_start = curr_time_ms;
 
     switch (curr_animation){
     case DIRECT:
       updateDirectAnimation();
       break;
     case FADE:
-      updateFadeAnimation();
+      updateFadeAnimation(curr_time_ms);
       break;
     case BREATHE:
-      updateBreatheAnimation();
+      updateBreatheAnimation(curr_time_ms);
       break;
     default:
       break;
@@ -38,9 +46,8 @@ void LEDGroupController::update() {
 
     strip.Show();
   }
-
+  
 }
-
 
 void LEDGroupController::updateDirectAnimation(){
 
@@ -51,10 +58,9 @@ void LEDGroupController::updateDirectAnimation(){
 
 }
 
-void LEDGroupController::updateFadeAnimation(){
+void LEDGroupController::updateFadeAnimation(unsigned long curr_time_ms){
 
-  uint16_t elapsed_time = std::min((millis() - transition_start), (unsigned long)(transition_duration));
-  uint8_t progress = (uint16_t(255) * elapsed_time) / transition_duration;
+  uint8_t progress = animationProgress(255, curr_time_ms);
   RgbwColor color = RgbwColor::LinearBlend(last_group_color, group_color, progress);
 
   for (uint8_t i = 0; i<num_leds; i++){
@@ -66,14 +72,42 @@ void LEDGroupController::updateFadeAnimation(){
   }
 }
 
-void LEDGroupController::updateBreatheAnimation(){
-  // RgbwColor::Dim();
-  
+bool breathe_out;
+void LEDGroupController::updateBreatheAnimation(unsigned long curr_time_ms){
+
+  if (breathe_out){
+    uint8_t progress = animationProgress(breathe_depth, curr_time_ms);
+    group_color = last_group_color.Dim(255-progress);
+
+    for (uint8_t i = 0; i<num_leds; i++){
+      strip.SetPixelColor(led_indexes[i], group_color);
+    }
+
+    if (progress == breathe_depth){
+      // breathe_out = false;
+      transition_start = 0;
+    }
+  }/*else{
+    uint8_t progress = animationProgress(breathe_depth);
+    RgbwColor color = group_color.Brighten(255-progress);
+
+    for (uint8_t i = 0; i<num_leds; i++){
+      strip.SetPixelColor(led_indexes[i], color);
+    }
+
+    if (progress == breathe_depth){
+      breathe_out = true;
+      transition_start = 0;
+    }
+  }  */
 }
 
 void LEDGroupController::startBreathe(){
-  transition_complete = false;
+  last_group_color = group_color;
+  breathe_out = true;
   curr_animation = BREATHE;
+  transition_start = 0;
+  transition_complete = false;
 }
 
 

@@ -17,7 +17,7 @@
 #define DATA_PIN D6
 
 
-
+//LED indexes for each Hex group, starting from bottom left corner, clockwise
 const uint8_t ledGroup1Indexes[] = {96,97,98,99,100,101,102,103};
 const uint8_t ledGroup2Indexes[] = {48,55,54,53,52,51,50,49};
 const uint8_t ledGroup3Indexes[] = {37,38,39,32,33,34,35,36};
@@ -41,12 +41,12 @@ const uint8_t ledGroup13Indexes[] = {3,4,5,6,7,0,1,2};
 int colorSaturation = 255;
 
 /// @brief Define colors for Neo Pixel Bus
-RgbwColor red(colorSaturation, 0, 0,0);
-RgbwColor green(0, colorSaturation, 0,0);
-RgbwColor blue(0, 0, colorSaturation,0);
-RgbwColor white(0,0,0,colorSaturation);
-RgbwColor black(0);
-RgbwColor yellow(colorSaturation/2,(colorSaturation/2)-25,0,0);
+const RgbwColor red(colorSaturation, 0, 0,0);
+const RgbwColor green(0, colorSaturation, 0,0);
+const RgbwColor blue(0, 0, colorSaturation,0);
+const RgbwColor white(0,0,0,colorSaturation);
+const RgbwColor black(0);
+const RgbwColor yellow(colorSaturation/2,(colorSaturation/2)-25,0,0);
 
 RgbwColor FAA_MVFR(25,50,255,0);
 RgbwColor FAA_VFR(25,255,12,0);
@@ -70,6 +70,7 @@ const char* STATION_ID_KHKY = "KHKY"; //Hickory
 const char* STATION_ID_KMTV = "KMTV"; //Blue Ridge
 //****************End App Config***********************************************
 
+//We use these objects to manage wifi / make requests / run a webserver
 WiFiClient client;
 HTTPClient http;
 AsyncWebServer server(80);
@@ -78,7 +79,7 @@ AsyncWebServer server(80);
 //Alternative DMA mode, uses GPIO3, and interferes with serial, but is supposed to be a lot faster
 //NeoPixelBus<NeoGrbwFeature, NeoEsp8266Dma800KbpsMethod> strip (NUM_LED);
 
-//UART method, UART0 uses TXD0/GPIO1 pin. UART1 uses TXD1/GPIO2 
+//UART method, UART0 uses TXD0/GPIO1 pin. UART1 uses TXD1/GPIO2. D4 on NodeMCU
 NeoPixelBus<NeoGrbwFeature, NeoEsp8266Uart1800KbpsMethod> strip (NUM_LED);
 
 LEDGroupController led_controllers[] = {
@@ -300,7 +301,7 @@ void Toggle_LEDs_RED(){
   }
 
   while(!group_manager.transitionComplete()){
-    group_manager.loop();
+    group_manager.loop(millis());
   }
 
   for (uint8_t i=0; i<NUM_HEXES;i++){
@@ -336,6 +337,8 @@ void UpdateWifi(){
   switch(WiFi.status()){
     case WL_CONNECTION_LOST:
       WiFi.reconnect();
+      break;
+    default:
       break;
   }
 }
@@ -408,16 +411,32 @@ void DoSerialAction(){
 }
 
 
-unsigned long p_time = 0;
+//TODO: Need to find or implement timer class
+unsigned long p_time1 = 0;
+unsigned long p_time2 = 0;
 void loop() {
-  DoSerialAction();
-  UpdateWifi();
-  group_manager.loop();
+  group_manager.loop(millis());
   ElegantOTA.loop();
 
-  if (p_time == 0 || millis() - p_time > (1000*60*30)){
+  //30 minute timer
+  if (p_time1 == 0 || millis() - p_time1 > (1000*60*30)){
+
     setLEDFlightRules();
-    p_time = millis();
+
+    p_time1 = millis();
+  }
+
+  //1 second timer
+  if (p_time2 == 0 || millis() - p_time2 > (1000)){
+  
+    if (group_manager.transitionComplete()){
+      group_manager.startBreathe();
+    }
+
+    UpdateWifi();
+    DoSerialAction();
+
+    p_time2 = millis();
   }
 
 }
