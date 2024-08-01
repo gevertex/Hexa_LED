@@ -25,8 +25,8 @@ public:
   uint8_t animationProgress(uint8_t scale, unsigned long curr_time_ms);
 
 private:
-  const uint8_t *led_indexes;
   const char *name;
+  const uint8_t *led_indexes;
   uint8_t num_leds;
   NeoPixelBus<NeoGrbwFeature, NeoEsp8266Uart1800KbpsMethod> &strip;
   RgbwColor target_color;

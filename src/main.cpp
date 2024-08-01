@@ -125,7 +125,7 @@ String httpGETRequest(const char* serverName) {
   http.begin(client, serverName);
 
   // If you need Node-RED/server authentication, insert user and password below
-  http.setAuthorization(avwx_auth_header);
+  http.setAuthorization(avwx_auth);
 
   // Send HTTP POST request
   int httpResponseCode = http.GET();
@@ -180,7 +180,7 @@ const char* getFlightRules(const char* station_id){
 }
 
 void connectWifi(){
-  WiFi.begin(ssid, password);
+  WiFi.begin(wifi_ssid, wifi_password);
   WiFi.setAutoReconnect(true);
 
   Serial.println();
