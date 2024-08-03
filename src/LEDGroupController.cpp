@@ -1,4 +1,3 @@
-// LEDGroupController.cpp
 #include <cstdint>
 #include <NeoPixelBus.h>
 #include <algorithm>
