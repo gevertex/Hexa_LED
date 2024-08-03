@@ -30,17 +30,17 @@ void LEDGroupController::update(unsigned long curr_time_ms) {
       transition_start = curr_time_ms;
 
     switch (curr_animation){
-    case DIRECT:
-      updateDirectAnimation();
-      break;
-    case FADE:
-      updateFadeAnimation(curr_time_ms);
-      break;
-    case BREATHE:
-      updateBreatheAnimation(curr_time_ms);
-      break;
-    default:
-      break;
+      case DIRECT:
+        updateDirectAnimation();
+        break;
+      case FADE:
+        updateFadeAnimation(curr_time_ms);
+        break;
+      case BREATHE:
+        updateBreatheAnimation(curr_time_ms);
+        break;
+      default:
+        break;
     }
 
     strip.Show();
