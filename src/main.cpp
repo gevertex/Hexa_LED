@@ -388,6 +388,34 @@ void UpdateWifi(){
   }
 }
 
+//****************Menu*****************************************************
+void showMenu() {
+    static const char* MENU_TEXT = R"(
+Select an Action:
+1. Toggle LED Red
+2. Flag Show
+3. Light Position
+4. Toggle LED Red By Hex
+5. Light Hex By Index
+6. Show FAA Colors
+7. Get Flight Rules
+8. Reconnect Wifi
+
+Option: )";
+    Serial.print(MENU_TEXT);
+}
+
+enum class MenuOption {
+    TOGGLE_LED_RED = '1',
+    FLAG_SHOW = '2',
+    LIGHT_POSITION = '3',
+    TOGGLE_LED_RED_BY_HEX = '4',
+    LIGHT_HEX_BY_INDEX = '5',
+    SHOW_FAA_COLORS = '6',
+    GET_FLIGHT_RULES = '7',
+    RECONNECT_WIFI = '8'
+};
+
 bool actionsShown = false;
 void DoSerialAction(){
 
@@ -399,41 +427,34 @@ void DoSerialAction(){
     Serial.println(WiFi.status());
     Serial.println();
 
-    Serial.println("Select an Action:");
-    Serial.println("1. Toggle LED Red");
-    Serial.println("2. Flag Show");
-    Serial.println("3. Light Position");
-    Serial.println("4. Toggle LED Red By Hex");
-    Serial.println("5. Light Hex By Index");
-    Serial.println("6. Show FAA Colors");
-    Serial.println("7. Get Flight Rules");
-    Serial.println("8. Reconnect Wifi");
+    showMenu();
     Serial.println();
-    Serial.print("Option: ");
     actionsShown = true;
   }
 
   if (Serial.available() > 0){
+    
     char iByte = Serial.read();
     Serial.println(iByte);
-
-    switch(iByte){
-      case '1': 
+    
+    MenuOption option = static_cast<MenuOption>(iByte); 
+    switch(option){
+      case MenuOption::TOGGLE_LED_RED: 
         Toggle_LEDs_RED();
         break;
-      case '2':
+      case MenuOption::FLAG_SHOW:
         R_W_B_scroll();
         break;
-      case '3':
+      case MenuOption::LIGHT_POSITION:
         setLedRed(getSerialString().toInt());
         break;
-      case '4':
+      case MenuOption::TOGGLE_LED_RED_BY_HEX:
         // ScrollByHex();
         break;
-      case '5':
+      case MenuOption::LIGHT_HEX_BY_INDEX:
         group_manager.setGroupColor(getSerialString().toInt(), FAA_LIFR, DIRECT);
         break;
-      case '6':
+      case MenuOption::SHOW_FAA_COLORS:
         // setHexFlightCategory("VFR", 3, DIRECT);
         // setHexFlightCategory("MVFR", 4, DIRECT);
         // setHexFlightCategory("IFR", 5, DIRECT);
@@ -443,10 +464,10 @@ void DoSerialAction(){
         group_manager.setGroupColor(5, FAA_IFR, FADE);
         group_manager.setGroupColor(6, FAA_LIFR, FADE);
         break;
-      case '7':
+      case MenuOption::GET_FLIGHT_RULES:
         setLEDFlightRules();
         break;
-      case '8':
+      case MenuOption::RECONNECT_WIFI:
         WiFi.reconnect();
         break;
 
@@ -476,28 +497,6 @@ public:
 // In your main code:
 Timer flightRulesTimer(1000 * 60 * 30);  // 30 minutes
 Timer breatheTimer(1000);                 // 1 second
-
-enum class MenuOption {
-    TOGGLE_LED_RED = '1',
-    FLAG_SHOW = '2',
-    // ... etc
-};
-
-void showMenu() {
-    static const char* MENU_TEXT = R"(
-Select an Action:
-1. Toggle LED Red
-2. Flag Show
-3. Light Position
-4. Toggle LED Red By Hex
-5. Light Hex By Index
-6. Show FAA Colors
-7. Get Flight Rules
-8. Reconnect Wifi
-
-Option: )";
-    Serial.print(MENU_TEXT);
-}
 
 void loop() {
     if (flightRulesTimer.isElapsed()) {
