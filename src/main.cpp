@@ -428,12 +428,11 @@ void DoSerialAction(){
     Serial.println();
 
     showMenu();
-    Serial.println();
     actionsShown = true;
   }
 
   if (Serial.available() > 0){
-    
+  
     char iByte = Serial.read();
     Serial.println(iByte);
     
