@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <ElegantOTA.h>
 #include <ESPAsyncWebServer.h>
+#include <map>
 
 #include "LEDGroupManager.h"
 #include "Credentials.h"
@@ -13,9 +14,12 @@
 
 
 //*************App Config*****************************************************
-#define NUM_LED 104
-#define NUM_HEXES 13
-#define DATA_PIN D6
+namespace Config{
+  constexpr int NUM_LED = 104;
+  constexpr int NUM_HEXES = 13;
+  constexpr int COLOR_SATURATION = 255;
+// #define DATA_PIN D6
+}
 
 
 //LED indexes for each Hex group, starting from bottom left corner, clockwise
@@ -39,36 +43,76 @@ const uint8_t ledGroup13Indexes[] = {3,4,5,6,7,0,1,2};
 // 1  \      / 6
 //      ----
 //     0   7
-int colorSaturation = 255;
+
 
 /// @brief Define colors for Neo Pixel Bus
-const RgbwColor red(colorSaturation, 0, 0,0);
-const RgbwColor green(0, colorSaturation, 0,0);
-const RgbwColor blue(0, 0, colorSaturation,0);
-const RgbwColor white(0,0,0,colorSaturation);
+const RgbwColor red(Config::COLOR_SATURATION, 0, 0,0);
+const RgbwColor green(0, Config::COLOR_SATURATION, 0,0);
+const RgbwColor blue(0, 0, Config::COLOR_SATURATION,0);
+const RgbwColor white(0,0,0,Config::COLOR_SATURATION);
 const RgbwColor black(0);
-const RgbwColor yellow(colorSaturation/2,(colorSaturation/2)-25,0,0);
+const RgbwColor yellow(Config::COLOR_SATURATION/2,(Config::COLOR_SATURATION/2)-25,0,0);
 
 RgbwColor FAA_MVFR(25,50,255,0);
 RgbwColor FAA_VFR(25,255,12,0);
 RgbwColor FAA_IFR(255,7,3,0);
 RgbwColor FAA_LIFR(255,20,255,0);
 
-//This is so messy. 
-//TODO: Fix this so it's not so messy
-const char* STATION_ID_KEQY = "KEQY"; //Monroe
-const char* STATION_ID_KRUQ = "KRUQ"; //Mid Carolina
-const char* STATION_ID_KUZA = "KUZA"; //Rock Hill
-const char* STATION_ID_KCLT = "KCLT"; //Charlotte
-const char* STATION_ID_KESN = "KESN"; //Easton
-const char* STATION_ID_KLEE = "KLEE"; //Leesburg
-const char* STATION_ID_KRDU = "KRDU"; //Raleigh
-const char* STATION_ID_KAVL = "KAVL"; //Asheville
-const char* STATION_ID_KHXD = "KHXD"; //Hilton Head
-const char* STATION_ID_KFFA = "KFFA"; //First Flight
-const char* STATION_ID_KIPJ = "KIPJ"; //Lincolnton
-const char* STATION_ID_KHKY = "KHKY"; //Hickory
-const char* STATION_ID_KMTV = "KMTV"; //Blue Ridge
+enum class Station{
+  KEQY,
+  KRUQ,
+  KUZA,
+  KCLT,
+  KESN,
+  KLEE,
+  KRDU,
+  KAVL,
+  KHXD,
+  KFFA,
+  KIPJ,
+  KHKY,
+  KMTV
+};
+
+const std::map<Station, const char*> STATION_IDS = {
+  {Station::KEQY, "KEQY"},
+  {Station::KRUQ, "KRUQ"},
+  {Station::KUZA, "KUZA"},
+  {Station::KCLT, "KCLT"},
+  {Station::KESN, "KESN"},
+  {Station::KLEE, "KLEE"},
+  {Station::KRDU, "KRDU"},
+  {Station::KAVL, "KAVL"},
+  {Station::KHXD, "KHXD"},
+  {Station::KFFA, "KFFA"},
+  {Station::KIPJ, "KIPJ"},
+  {Station::KHKY, "KHKY"},
+  {Station::KMTV, "KMTV"}
+};
+
+enum class FlightRule {
+    VFR,
+    MVFR,
+    IFR,
+    LIFR,
+    ERROR
+};
+
+const std::map<FlightRule, RgbwColor> FLIGHT_RULE_COLORS = {
+    {FlightRule::VFR, RgbwColor(25,255,12,0)},
+    {FlightRule::MVFR, RgbwColor(25,50,255,0)},
+    {FlightRule::IFR, RgbwColor(255,7,3,0)},
+    {FlightRule::LIFR, RgbwColor(255,20,255,0)}
+};
+
+FlightRule parseFlightRule(const char* rule) {
+    if (strcmp(rule, "VFR") == 0) return FlightRule::VFR;
+    if (strcmp(rule, "MVFR") == 0) return FlightRule::MVFR;
+    if (strcmp(rule, "IFR") == 0) return FlightRule::IFR;
+    if (strcmp(rule, "LIFR") == 0) return FlightRule::LIFR;
+    return FlightRule::ERROR;
+}
+
 //****************End App Config***********************************************
 
 //We use these objects to manage wifi / make requests / run a webserver
@@ -81,7 +125,7 @@ AsyncWebServer server(80);
 //NeoPixelBus<NeoGrbwFeature, NeoEsp8266Dma800KbpsMethod> strip (NUM_LED);
 
 //UART method, UART0 uses TXD0/GPIO1 pin. UART1 uses TXD1/GPIO2. D4 on NodeMCU
-NeoPixelBus<NeoGrbwFeature, NeoEsp8266Uart1800KbpsMethod> strip (NUM_LED);
+NeoPixelBus<NeoGrbwFeature, NeoEsp8266Uart1800KbpsMethod> strip (Config::NUM_LED);
 
 LEDGroupController led_controllers[] = {
   LEDGroupController("Group1", ledGroup1Indexes, 8, strip),
@@ -243,7 +287,7 @@ void setHexFlightCategory(const char* flight_category, uint8_t group_index, Anim
 }
 
 void R_W_B_scroll(){
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, red);
     strip.Show();
     delay(20);
@@ -264,31 +308,31 @@ void R_W_B_scroll(){
     // delay(20);
   }
 
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, black);
     strip.Show();
     delay(20);
   }
 
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, white);
     strip.Show();
     delay(20);
   }
 
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, black);
     strip.Show();
     delay(20);
   }
 
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, blue);
     strip.Show();
     delay(20);
   }
 
-  for (int i=0; i<NUM_LED; i++){
+  for (int i=0; i<Config::NUM_LED; i++){
     strip.SetPixelColor(i, black);
     strip.Show();
     delay(20);
@@ -297,7 +341,7 @@ void R_W_B_scroll(){
 }
 
 void Toggle_LEDs_RED(){
-  for (uint8_t i=0; i<NUM_HEXES;i++){
+  for (uint8_t i=0; i<Config::NUM_HEXES;i++){
     group_manager.setGroupColor(i, red, FADE);
   }
 
@@ -305,25 +349,25 @@ void Toggle_LEDs_RED(){
     group_manager.loop(millis());
   }
 
-  for (uint8_t i=0; i<NUM_HEXES;i++){
+  for (uint8_t i=0; i<Config::NUM_HEXES;i++){
     group_manager.setGroupColor(i, black, FADE);
   }
 }
 
 void setLEDFlightRules(){
-  setHexFlightCategory(getFlightRules(STATION_ID_KEQY), 0, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KRUQ), 1, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KESN), 2, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KUZA), 3, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KCLT), 4, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KLEE), 5, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KRDU), 6, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KAVL), 7, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KHXD), 8, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KFFA), 9, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KIPJ), 10, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KHKY), 11, FADE);
-  setHexFlightCategory(getFlightRules(STATION_ID_KMTV), 12, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KEQY)), 0, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KRUQ)), 1, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KESN)), 2, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KUZA)), 3, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KCLT)), 4, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KLEE)), 5, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KRDU)), 6, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KAVL)), 7, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KHXD)), 8, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KFFA)), 9, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KIPJ)), 10, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KHKY)), 11, FADE);
+  setHexFlightCategory(getFlightRules(STATION_IDS.at(Station::KMTV)), 12, FADE);
 }
 
 void setLedRed(int led_index){
@@ -344,6 +388,34 @@ void UpdateWifi(){
   }
 }
 
+//****************Menu*****************************************************
+void showMenu() {
+    static const char* MENU_TEXT = R"(
+Select an Action:
+1. Toggle LED Red
+2. Flag Show
+3. Light Position
+4. Toggle LED Red By Hex
+5. Light Hex By Index
+6. Show FAA Colors
+7. Get Flight Rules
+8. Reconnect Wifi
+
+Option: )";
+    Serial.print(MENU_TEXT);
+}
+
+enum class MenuOption {
+    TOGGLE_LED_RED = '1',
+    FLAG_SHOW = '2',
+    LIGHT_POSITION = '3',
+    TOGGLE_LED_RED_BY_HEX = '4',
+    LIGHT_HEX_BY_INDEX = '5',
+    SHOW_FAA_COLORS = '6',
+    GET_FLIGHT_RULES = '7',
+    RECONNECT_WIFI = '8'
+};
+
 bool actionsShown = false;
 void DoSerialAction(){
 
@@ -355,41 +427,33 @@ void DoSerialAction(){
     Serial.println(WiFi.status());
     Serial.println();
 
-    Serial.println("Select an Action:");
-    Serial.println("1. Toggle LED Red");
-    Serial.println("2. Flag Show");
-    Serial.println("3. Light Position");
-    Serial.println("4. Toggle LED Red By Hex");
-    Serial.println("5. Light Hex By Index");
-    Serial.println("6. Show FAA Colors");
-    Serial.println("7. Get Flight Rules");
-    Serial.println("8. Reconnect Wifi");
-    Serial.println();
-    Serial.print("Option: ");
+    showMenu();
     actionsShown = true;
   }
 
   if (Serial.available() > 0){
+  
     char iByte = Serial.read();
     Serial.println(iByte);
-
-    switch(iByte){
-      case '1': 
+    
+    MenuOption option = static_cast<MenuOption>(iByte); 
+    switch(option){
+      case MenuOption::TOGGLE_LED_RED: 
         Toggle_LEDs_RED();
         break;
-      case '2':
+      case MenuOption::FLAG_SHOW:
         R_W_B_scroll();
         break;
-      case '3':
+      case MenuOption::LIGHT_POSITION:
         setLedRed(getSerialString().toInt());
         break;
-      case '4':
+      case MenuOption::TOGGLE_LED_RED_BY_HEX:
         // ScrollByHex();
         break;
-      case '5':
+      case MenuOption::LIGHT_HEX_BY_INDEX:
         group_manager.setGroupColor(getSerialString().toInt(), FAA_LIFR, DIRECT);
         break;
-      case '6':
+      case MenuOption::SHOW_FAA_COLORS:
         // setHexFlightCategory("VFR", 3, DIRECT);
         // setHexFlightCategory("MVFR", 4, DIRECT);
         // setHexFlightCategory("IFR", 5, DIRECT);
@@ -399,10 +463,10 @@ void DoSerialAction(){
         group_manager.setGroupColor(5, FAA_IFR, FADE);
         group_manager.setGroupColor(6, FAA_LIFR, FADE);
         break;
-      case '7':
+      case MenuOption::GET_FLIGHT_RULES:
         setLEDFlightRules();
         break;
-      case '8':
+      case MenuOption::RECONNECT_WIFI:
         WiFi.reconnect();
         break;
 
@@ -411,33 +475,39 @@ void DoSerialAction(){
   }
 }
 
-
-//TODO: Need to find or implement timer class
-unsigned long p_time1 = 0;
-unsigned long p_time2 = 0;
-void loop() {
-  group_manager.loop(millis());
-  ElegantOTA.loop();
-
-  //30 minute timer
-  if (p_time1 == 0 || millis() - p_time1 > (1000*60*30)){
-
-    setLEDFlightRules();
-
-    p_time1 = millis();
-  }
-
-  //1 second timer
-  if (p_time2 == 0 || millis() - p_time2 > (1000)){
-  
-    if (group_manager.transitionComplete()){
-      group_manager.startBreathe();
+class Timer {
+private:
+    unsigned long previousTime = 0;
+    unsigned long interval;
+    
+public:
+    Timer(unsigned long intervalMs) : interval(intervalMs) {}
+    
+    bool isElapsed() {
+        unsigned long currentTime = millis();
+        if (previousTime == 0 || currentTime - previousTime >= interval) {
+            previousTime = currentTime;
+            return true;
+        }
+        return false;
     }
+};
 
-    UpdateWifi();
-    DoSerialAction();
+// In your main code:
+Timer flightRulesTimer(1000 * 60 * 30);  // 30 minutes
+Timer breatheTimer(1000);                 // 1 second
 
-    p_time2 = millis();
-  }
-
+void loop() {
+    if (flightRulesTimer.isElapsed()) {
+        setLEDFlightRules();
+    }
+    
+    if (breatheTimer.isElapsed()) {
+        if (group_manager.transitionComplete()) {
+            group_manager.startBreathe();
+        }
+        UpdateWifi();
+        DoSerialAction();
+    }
+    // ... rest of loop
 }
