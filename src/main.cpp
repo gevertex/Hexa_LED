@@ -18,7 +18,8 @@ namespace Config{
   constexpr int NUM_LED = 104;
   constexpr int NUM_HEXES = 13;
   constexpr int COLOR_SATURATION = 255;
-// #define DATA_PIN D6
+  //This should not be needed as the LED controller uses a standard port for this
+  // #define DATA_PIN D6 
 }
 
 
@@ -509,5 +510,8 @@ void loop() {
         UpdateWifi();
         DoSerialAction();
     }
-    // ... rest of loop
+
+    group_manager.loop(millis());
+    ElegantOTA.loop();
+
 }
